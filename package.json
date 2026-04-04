@@ -1,0 +1,26 @@
+{
+  "name": "instagram-bot",
+  "version": "1.0.0",
+  "description": "Bot para o Instagram com painel Electron",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "electron ."
+    
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielvieirabh/insta.git"
+  },
+ "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/danielvieirabh/insta/issues"
+  },
+  "homepage": "https://github.com/danielvieirabh/insta#readme",
+  "devDependencies": {
+    "electron": "^41.1.1"
+  }
+}
