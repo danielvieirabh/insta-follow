@@ -82,13 +82,11 @@ ipcMain.on('start-bot', (event, config) => {
       const maxFollows = ${config.followerCount};
       const waitTime = ${config.delaySeconds} * 1000;
       
-      // Navega para a página do alvo, caso ainda não esteja nela
       if (!window.location.href.includes(targetUser)) {
         window.location.href = 'https://www.instagram.com/' + targetUser + '/';
         await delay(5000);
       }
       
-      // Abre o pop-up de seguidores
       const followersLink = document.querySelector('a[href="/' + targetUser + '/followers/"]');
       if (followersLink) {
         followersLink.click();
@@ -96,30 +94,80 @@ ipcMain.on('start-bot', (event, config) => {
       }
 
       let followedCount = 0;
+      let lastScrollHeight = 0;
+      let retryCount = 0;
       
       while (followedCount < maxFollows) {
-        const buttons = Array.from(document.querySelectorAll('button')).filter(b => b.textContent === 'Seguir' || b.textContent === 'Follow');
+        const dialog = document.querySelector('div[role="dialog"]');
+        const searchArea = dialog ? dialog : document;
+
+        const buttons = Array.from(searchArea.querySelectorAll('button')).filter(b => 
+          (b.textContent === 'Seguir' || b.textContent === 'Follow') && !b.dataset.botClicked
+        );
         
         if (buttons.length > 0) {
-          buttons[0].click(); // Clica sempre no primeiro botão de Seguir disponível
+          const btn = buttons[0];
+          
+          btn.dataset.botClicked = 'true'; 
+          btn.click(); 
+          
           followedCount++;
-          console.log('[BOT] Seguiu ' + followedCount + ' de ' + maxFollows);
-          await delay(waitTime); // Aguarda o tempo configurado pelo usuário
-        } else {
-          // Se não encontrou o botão de seguir, rola a lista de seguidores para baixo
-          console.log('[BOT] Procurando novas contas para seguir...');
-          const dialog = document.querySelector('div[role="dialog"]');
-          if (dialog) {
-            const dialogButtons = dialog.querySelectorAll('button');
-            if (dialogButtons.length > 0) {
-              dialogButtons[dialogButtons.length - 1].scrollIntoView();
-            }
+          
+          // Aguarda um instante para o Instagram mudar o texto do botão
+          await delay(1000);
+          
+          const statusBotao = btn.textContent; // Lê o que o botão virou
+          
+          if (statusBotao === 'Seguindo' || statusBotao === 'Following') {
+            console.log('[BOT] Seguiu ' + followedCount + ' de ' + maxFollows);
+          } else if (statusBotao === 'Solicitado' || statusBotao === 'Requested') {
+            console.log('[BOT] Solicitou ' + followedCount + ' de ' + maxFollows);
+          } else {
+            console.log('[BOT] Seguiu ' + followedCount + ' de ' + maxFollows);
           }
-          await delay(2000); // Aguarda os novos seguidores carregarem
+          
+          retryCount = 0; 
+          
+          // Desconta 1 segundo do tempo de espera total, já que esperamos 1s acima
+          const tempoRestante = waitTime - 1000;
+          await delay(tempoRestante > 0 ? tempoRestante : 1000); 
+
+        } else {
+          console.log('[BOT] Nenhum botão novo. Rolando a lista para baixo...');
+          
+          if (dialog) {
+            const scrollableContainer = Array.from(dialog.querySelectorAll('div')).find(div => div.scrollHeight > div.clientHeight + 10);
+            
+            if (scrollableContainer) {
+              scrollableContainer.scrollTop = scrollableContainer.scrollHeight;
+              
+              if (scrollableContainer.scrollHeight === lastScrollHeight) {
+                retryCount++;
+                if (retryCount >= 4) {
+                  console.log('[BOT] Fim da lista alcançado ou limite de carregamento.');
+                  break; 
+                }
+              } else {
+                retryCount = 0; 
+              }
+              lastScrollHeight = scrollableContainer.scrollHeight;
+              
+            } else {
+              const allDivs = dialog.querySelectorAll('div');
+              if (allDivs.length > 0) {
+                allDivs[allDivs.length - 1].scrollIntoView(false);
+              }
+            }
+          } else {
+            window.scrollBy(0, 1000);
+          }
+          
+          await delay(3000); 
         }
       }
-      console.log('[BOT] Concluído: ' + followedCount + ' contas seguidas com sucesso!');
-      return 'Concluído: ' + followedCount + ' contas seguidas com sucesso!';
+      
+      console.log('[BOT] Processo finalizado! ' + followedCount + ' ações executadas.');
+      return 'Concluído: ' + followedCount + ' ações executadas.';
     })();
   `;
 
