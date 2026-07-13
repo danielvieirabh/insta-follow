@@ -15,7 +15,7 @@ function createMainWindow() {
     }
   });
 
-  mainWindow.loadFile('index.html');
+  mainWindow.loadFile('unfollow.html');
 }
 
 app.whenReady().then(() => {
@@ -63,11 +63,11 @@ ipcMain.on('open-instagram-window', () => {
   }
 });
 
-// Recebe os dados do painel HTML para iniciar o bot
-ipcMain.on('start-bot', (event, config) => {
-  console.log('--- Configurações Recebidas ---');
-  console.log(`Alvo (@): ${config.targetUsername}`);
-  console.log(`Número de Seguidores: ${config.followerCount}`);
+// Recebe os dados do painel HTML para iniciar o bot de UNFOLLOW
+ipcMain.on('start-unfollow-bot', (event, config) => {
+  console.log('--- Configurações de Unfollow Recebidas ---');
+  console.log(`Seu @: ${config.targetUsername}`);
+  console.log(`Número de Unfollows: ${config.unfollowerCount}`);
   console.log(`Tempo entre ações: ${config.delaySeconds} segundos`);
 
   if (!instagramWindow) {
@@ -78,58 +78,81 @@ ipcMain.on('start-bot', (event, config) => {
   const script = `
     (async () => {
       const delay = ms => new Promise(res => setTimeout(res, ms));
-      const targetUser = '${config.targetUsername}';
-      const maxFollows = ${config.followerCount};
+      const myUser = '${config.targetUsername}';
+      const maxUnfollows = ${config.unfollowerCount};
       const waitTime = ${config.delaySeconds} * 1000;
       
-      if (!window.location.href.includes(targetUser)) {
-        window.location.href = 'https://www.instagram.com/' + targetUser + '/';
+      // 1. Navega para o perfil do usuário logado se já não estiver nele
+      if (!window.location.href.includes(myUser)) {
+        window.location.href = 'https://www.instagram.com/' + myUser + '/';
         await delay(5000);
       }
       
-      const followersLink = document.querySelector('a[href="/' + targetUser + '/followers/"]');
-      if (followersLink) {
-        followersLink.click();
+      // 2. NOVA BUSCA: Procura por texto que contenha "seguindo" ou "following"
+      // Isso ignora se o Instagram mudou a estrutura da tag interna
+      const allLinks = Array.from(document.querySelectorAll('a, span, div'));
+      const followingLink = allLinks.find(el => {
+        const text = el.textContent ? el.textContent.toLowerCase().trim() : '';
+        // Procura se o texto termina com "seguindo" ou "following" (Ex: "6.272 seguindo")
+        return text.endsWith('seguindo') || text.endsWith('following');
+      });
+      
+      if (followingLink) {
+        console.log('[BOT] Botão Seguindo encontrado através do texto!');
+        followingLink.click();
         await delay(4000);
+      } else {
+        // Segunda tentativa caso a primeira falhe (busca por um seletor nativo comum)
+        const backupLink = document.querySelector('a[href*="/following"]') || document.querySelector('a[href*="following"]');
+        if (backupLink) {
+          backupLink.click();
+          await delay(4000);
+        } else {
+          console.log('[BOT] Não foi possível encontrar o botão Seguindo por nenhum método.');
+          return 'Não foi possível encontrar o botão Seguindo. Verifique se o @ está correto.';
+        }
       }
 
-      let followedCount = 0;
+      let unfollowedCount = 0;
       let lastScrollHeight = 0;
       let retryCount = 0;
       
-      while (followedCount < maxFollows) {
+      while (unfollowedCount < maxUnfollows) {
         const dialog = document.querySelector('div[role="dialog"]');
         const searchArea = dialog ? dialog : document;
 
+        // Procura botões com texto exato "Seguindo" ou "Following" dentro da lista aberta
         const buttons = Array.from(searchArea.querySelectorAll('button')).filter(b => 
-          (b.textContent === 'Seguir' || b.textContent === 'Follow') && !b.dataset.botClicked
+          (b.textContent === 'Seguindo' || b.textContent === 'Following') && !b.dataset.botClicked
         );
         
         if (buttons.length > 0) {
           const btn = buttons[0];
-          
           btn.dataset.botClicked = 'true'; 
-          btn.click(); 
+          btn.click(); // Abre o modal de confirmação do Unfollow
           
-          followedCount++;
+          await delay(1500); 
           
-          // Aguarda um instante para o Instagram mudar o texto do botão
-          await delay(1000);
-          
-          const statusBotao = btn.textContent; // Lê o que o botão virou
-          
-          if (statusBotao === 'Seguindo' || statusBotao === 'Following') {
-            console.log('[BOT] Seguiu ' + followedCount + ' de ' + maxFollows);
-          } else if (statusBotao === 'Solicitado' || statusBotao === 'Requested') {
-            console.log('[BOT] Solicitou ' + followedCount + ' de ' + maxFollows);
+          // Encontra o botão de confirmar o unfollow no pop-up pequeno
+          const confirmBtns = Array.from(document.querySelectorAll('button')).filter(b => 
+            b.textContent === 'Deixar de seguir' || b.textContent === 'Unfollow'
+          );
+
+          if (confirmBtns.length > 0) {
+            confirmBtns[0].click();
+            unfollowedCount++;
+            console.log('[BOT] Deixou de seguir ' + unfollowedCount + ' de ' + maxUnfollows);
+            if (window.botAPI) {
+              // Notifica o console se aplicável
+            }
           } else {
-            console.log('[BOT] Seguiu ' + followedCount + ' de ' + maxFollows);
+            console.log('[BOT] Botão de confirmação não encontrado.');
+            btn.removeAttribute('data-bot-clicked'); 
           }
           
           retryCount = 0; 
           
-          // Desconta 1 segundo do tempo de espera total, já que esperamos 1s acima
-          const tempoRestante = waitTime - 1000;
+          const tempoRestante = waitTime - 1500;
           await delay(tempoRestante > 0 ? tempoRestante : 1000); 
 
         } else {
@@ -166,14 +189,14 @@ ipcMain.on('start-bot', (event, config) => {
         }
       }
       
-      console.log('[BOT] Processo finalizado! ' + followedCount + ' ações executadas.');
-      return 'Concluído: ' + followedCount + ' ações executadas.';
+      console.log('[BOT] Processo finalizado! ' + unfollowedCount + ' unfollows executados.');
+      return 'Concluído: ' + unfollowedCount + ' unfollows executados.';
     })();
   `;
 
-  // Executa o script dentro da janela do Instagram
   instagramWindow.webContents.executeJavaScript(script).then(result => {
     console.log(result);
+    if (mainWindow) mainWindow.webContents.send('bot-log', result);
   }).catch(err => {
     console.error('Erro na automação do Instagram:', err);
   });

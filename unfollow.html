@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Unfollow - Instagram</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e2e; color: #cdd6f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .panel { background-color: #313244; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); width: 350px; }
+    h2 { text-align: center; margin-bottom: 25px; color: #f38ba8; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; font-size: 14px; }
+    input { width: 100%; padding: 10px; border: none; border-radius: 5px; box-sizing: border-box; background-color: #1e1e2e; color: #cdd6f4; margin-bottom: 5px; }
+    button { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 15px; margin-top: 10px; transition: 0.2s; }
+    .btn-login { background-color: #cba6f7; color: #1e1e2e; margin-bottom: 20px; }
+    .btn-login:hover { background-color: #b48ead; }
+    .btn-start { background-color: #f38ba8; color: #1e1e2e; }
+    .btn-start:hover { background-color: #d2778f; }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <h2>Unfollow do Danzin</h2>
+
+    <button class="btn-login" id="btnInstagram">1. Entrar no Instagram</button>
+
+    <div class="form-group">
+      <label for="targetUser">O seu @ (Conta logada):</label>
+      <input type="text" id="targetUser" placeholder="Ex: seu_usuario_aqui">
+    </div>
+
+    <div class="form-group">
+      <label for="unfollowerCount">Quantidade de Unfollows:</label>
+      <input type="number" id="unfollowerCount" placeholder="Ex: 50" min="1">
+    </div>
+
+    <div class="form-group">
+      <label for="delaySeconds">Tempo entre unfollows (Segundos):</label>
+      <input type="number" id="delaySeconds" placeholder="Ex: 10" min="1">
+    </div>
+
+    <button class="btn-start" id="btnStartBot">2. Iniciar Unfollow</button>
+
+    <p id="statusText" style="text-align: center; margin-top: 15px; font-weight: bold; color: #f38ba8;"></p>
+  </div>
+
+  <script src="renderer_unfollow.js"></script>
+</body>
+</html>
